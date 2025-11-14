@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Préstamos - App</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 
+      ¡CAMBIO IMPORTANTE!
+      Cargamos Supabase desde el CDN aquí.
+      Esto crea la variable global 'supabase'
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- 
+      ¡CAMBIO IMPORTANTE!
+      Cargamos app.js SIN "type=module".
+      ¡AHORA PUEDES ABRIR CON DOBLE CLIC (file:///...)!
+    -->
+    <script src="./app.js" defer></script>
+
+</head>
+<body class="bg-gray-100 font-sans antialiased">
+
+    <!-- Indicador de Carga Global -->
+    <div id="loading-indicator" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white"></div>
+    </div>
+
+    <!-- Notificación Global -->
+    <div id="notification-box" class="hidden fixed top-5 right-5 text-white p-4 rounded-lg shadow-lg z-40 transition-all max-w-sm">
+        Mensaje de notificación
+    </div>
+
+    <!-- Modal de Confirmación (Genérico) -->
+    <div id="confirmation-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-gray-600 bg-opacity-75">
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="bg-white rounded-lg shadow-xl p-6 m-4 max-w-lg w-full">
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <!-- Icono de Alerta -->
+                        <svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Confirmar Acción</h3>
+                        <div class="mt-2">
+                            <p id="confirm-text" class="text-sm text-gray-500">¿Estás seguro?</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                    <button id="confirm-button" type="button" class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 sm:ml-3 sm:w-auto sm:text-sm">
+                        Confirmar
+                    </button>
+                    <button id="cancel-confirm-button" type="button" class="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:w-auto sm:text-sm">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 1. Vista de Autenticación (Login / Registro) -->
+    <div id="auth-view">
+        <div class="container mx-auto max-w-lg p-6 min-h-screen flex items-center justify-center">
+            <div class="w-full bg-white p-8 rounded-lg shadow-xl border border-gray-200">
+                <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Sistema de Préstamos</h1>
+                
+                <!-- Formularios de Login y Registro (Tabs) -->
+                <div x-data="{ tab: 'login' }" class="w-full">
+                    <div class="flex border-b mb-6">
+                        <button @click="tab = 'login'" :class="{ 'border-b-2 border-blue-600 text-blue-600': tab === 'login' }" class="flex-1 py-2 px-4 text-center font-medium text-gray-600 hover:text-blue-600 focus:outline-none">
+                            Iniciar Sesión
+                        </button>
+                        <button @click="tab = 'register'" :class="{ 'border-b-2 border-blue-600 text-blue-600': tab === 'register' }" class="flex-1 py-2 px-4 text-center font-medium text-gray-600 hover:text-blue-600 focus:outline-none">
+                            Registrarse
+                        </button>
+                    </div>
+
+                    <!-- Formulario de Login -->
+                    <div x-show="tab === 'login'">
+                        <form id="login-form">
+                            <div class="mb-4">
+                                <label for="login-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input type="email" id="login-email" name="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="usuario@dominio.com">
+                            </div>
+                            <div class="mb-6">
+                                <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                                <input type="password" id="login-password" name="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="••••••••">
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition duration-300">
+                                Acceder
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Formulario de Registro -->
+                    <div x-show="tab === 'register'" style="display: none;">
+                        <form id="register-form">
+                            <div class="mb-4">
+                                <label for="register-full_name" class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+                                <input type="text" id="register-full_name" name="full_name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Ej: Juan Pérez">
+                            </div>
+                            <div class="mb-4">
+                                <label for="register-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input type="email" id="register-email" name="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="usuario@dominio.com">
+                            </div>
+                            <div class="mb-4">
+                                <label for="register-password" class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                                <input type="password" id="register-password" name="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Mínimo 6 caracteres">
+                            </div>
+                            <div class="mb-6">
+                                <label for="register-role" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Usuario</label>
+                                <select id="register-role" name="role" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <option value="cobrador">Cobrador / Encargado</option>
+                                    <option value="admin">Administrador / Dueño</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 transition duration-300">
+                                Crear Cuenta
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Vista de la Aplicación (Oculta por defecto) -->
+    <div id="app-view" class="hidden">
+        <!-- Barra de Navegación Superior -->
+        <nav class="bg-white shadow-md w-full">
+            <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex-shrink-0 flex items-center">
+                        <span class="text-xl font-bold text-blue-600">PRESTAManager</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span id="user-email" class="text-sm text-gray-600 mr-4">cargando...</span>
+                        <button id="logout-button" class="bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition duration-300">
+                            Cerrar Sesión
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Contenido Principal de la App -->
+        <main class="container mx-auto max-w-7xl p-6">
+            
+            <!-- ============================================== -->
+            <!-- Dashboard del Administrador (Oculto por defecto) -->
+            <!-- ============================================== -->
+            <div id="admin-dashboard" class="hidden" x-data="{ adminTab: 'home' }">
+                
+                <!-- Navegación de Pestañas del Admin -->
+                <div class="mb-6 border-b border-gray-200">
+                    <nav id="admin-tabs" class="-mb-px flex space-x-8" aria-label="Tabs">
+                        <!-- (NUEVO) Click handler añadido -->
+                        <button @click="adminTab = 'home'; window.loadAdminDashboard()" :class="{ 'border-blue-500 text-blue-600': adminTab === 'home', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': adminTab !== 'home' }" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            Inicio (Admin)
+                        </button>
+                        <button @click="adminTab = 'clients'; window.loadClients()" :class="{ 'border-blue-500 text-blue-600': adminTab === 'clients', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': adminTab !== 'clients' }" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            (1.1) Gestión Clientes
+                        </button>
+                        <button @click="adminTab = 'loans'; window.loadLoans()" :class="{ 'border-blue-500 text-blue-600': adminTab === 'loans', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': adminTab !== 'loans' }" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            (1.2) Gestión Préstamos
+                        </button>
+                        <button @click="adminTab = 'users'; window.loadRoutesTable(); window.loadUsersTable()" :class="{ 'border-blue-500 text-blue-600': adminTab === 'users', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': adminTab !== 'users' }" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            (2.1) Usuarios y Rutas
+                        </button>
+                        <!-- (NUEVO) Click handler añadido -->
+                        <button @click="adminTab = 'reports'; window.loadReportsDashboard()" :class="{ 'border-blue-500 text-blue-600': adminTab === 'reports', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': adminTab !== 'reports' }" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            (1.4) Reportes
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Contenido de las Pestañas -->
+
+                <!-- (NUEVO) Pestaña Inicio con KPIs -->
+                <div x-show="adminTab === 'home'">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Resumen del Negocio</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- KPI Card: Total Prestado -->
+                        <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+                            <h3 class="text-sm font-medium text-gray-500 uppercase">Total Prestado</h3>
+                            <p id="kpi-total-loaned" class="mt-2 text-3xl font-bold text-blue-600">$0.00</p>
+                        </div>
+                        <!-- KPI Card: Total Cobrado -->
+                        <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+                            <h3 class="text-sm font-medium text-gray-500 uppercase">Total Cobrado</h3>
+                            <p id="kpi-total-collected" class="mt-2 text-3xl font-bold text-green-600">$0.00</p>
+                        </div>
+                        <!-- KPI Card: Interés Ganado (Liquidado) -->
+                        <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+                            <h3 class="text-sm font-medium text-gray-500 uppercase">Interés Ganado (Liquidado)</h3>
+                            <p id="kpi-interest-earned" class="mt-2 text-3xl font-bold text-yellow-600">$0.00</p>
+                        </div>
+                        <!-- KPI Card: Préstamos Activos -->
+                        <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+                            <h3 class="text-sm font-medium text-gray-500 uppercase">Préstamos Activos</h3>
+                            <p id="kpi-active-loans" class="mt-2 text-3xl font-bold text-gray-800">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pestaña (1.1) Gestión Clientes -->
+                <div x-show="adminTab === 'clients'" style="display: none;">
+                    <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold text-gray-800">Gestión de Clientes</h2>
+                            <button id="open-client-modal-btn" class="bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition duration-300">
+                                + Nuevo Cliente
+                            </button>
+                        </div>
+                        
+                        <!-- Tabla de Clientes -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                                        <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
+                                        <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                        <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ruta</th>
+                                        <th scope="col" class="relative px-5 py-3"><span class="sr-only">Acciones</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clients-table-body" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-gray-500 py-4">
+                                            Cargando clientes...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pestaña (1.2) Gestión Préstamos -->
+                <div x-show="adminTab === 'loans'" style="display: none;">
+                    <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold text-gray-800">Gestión de Préstamos</h2>
+                            <button id="open-loan-modal-btn" class="bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition duration-300">
+                                + Nuevo Préstamo
+                            </button>
+                        </div>
+                        
+                        <!-- Tabla de Préstamos -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                        <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
+                                        <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total a Pagar</th>
+                                        <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plazo</th>
+                                        <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                        <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="loans-table-body" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-gray-500 py-4">
+                                            Cargando préstamos...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pestaña (2.1) Usuarios y Rutas -->
+                <div x-show="adminTab === 'users'" style="display: none;">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        <!-- Columna de Rutas -->
+                        <div class="lg:col-span-1">
+                            <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h2 class="text-xl font-bold text-gray-800">Gestión de Rutas</h2>
+                                    <button id="open-route-modal-btn" class="bg-green-600 text-white py-2 px-3 rounded-lg font-medium hover:bg-green-700 text-sm">
+                                        + Nueva Ruta
+                                    </button>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                                <th class="relative px-4 py-3"><span class="sr-only">Acciones</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="routes-table-body" class="bg-white divide-y divide-gray-200">
+                                            <tr><td colspan="2" class="text-center text-gray-500 py-4">Cargando...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Columna de Usuarios -->
+                        <div class="lg:col-span-2">
+                            <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+                                <h2 class="text-xl font-bold text-gray-800 mb-4">Gestión de Usuarios</h2>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
+                                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ruta Asignada</th>
+                                                <th class="relative px-4 py-3"><span class="sr-only">Acciones</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+                                            <tr><td colspan="4" class="text-center text-gray-500 py-4">Cargando...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- (NUEVO) Pestaña (1.4) Reportes con Tabla -->
+                <div x-show="adminTab === 'reports'" style="display: none;">
+                    <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4">Reporte por Estado de Préstamo</h2>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                        <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                                        <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto Total Prestado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reports-status-table-body" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-gray-500 py-4">
+                                            Cargando reporte...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ============================================== -->
+            <!-- Dashboard del Cobrador (Oculto por defecto) -->
+            <!-- ============================================== -->
+            <div id="collector-dashboard" class="hidden bg-white p-6 rounded-lg shadow-lg border border-gray-200" x-data="{ collectorTab: 'route' }">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Panel del Cobrador</h2>
+                
+                <!-- Navegación de Pestañas del Cobrador -->
+                <div class="mb-6 border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                        <button @click="collectorTab = 'route'" :class="{ 'border-blue-500 text-blue-600': collectorTab === 'route', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': collectorTab !== 'route' }" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            (3.1) Mi Ruta de Cobro
+                        </button>
+                        <button @click="collectorTab = 'cashout'" :class="{ 'border-blue-500 text-blue-600': collectorTab === 'cashout', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': collectorTab !== 'cashout' }" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            (3.4) Corte de Caja
+                        </button>
+                    </nav>
+                </div>
+                
+                <!-- Contenido Pestañas Cobrador -->
+                <div x-show="collectorTab === 'route'">
+                    <p class="text-gray-500">Aquí verás tu lista de clientes a cobrar hoy. (En construcción)</p>
+                </div>
+                <div x-show="collectorTab === 'cashout'" style="display: none;">
+                    <p class="text-gray-500">Aquí podrás enviar tu corte de caja diario. (En construcción)</p>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- MODAL GESTIÓN DE CLIENTES -->
+    <!-- ============================================== -->
+    <div id="client-modal" class="hidden fixed inset-0 z-40 overflow-y-auto bg-gray-600 bg-opacity-75">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <!-- Contenido del Modal -->
+            <div class="bg-white rounded-lg shadow-xl p-6 m-4 max-w-2xl w-full relative">
+                <!-- Encabezado del Modal -->
+                <div class="flex justify-between items-center pb-3 border-b">
+                    <h3 id="client-modal-title" class="text-2xl font-semibold text-gray-900">Nuevo Cliente</h3>
+                    <button id="close-client-modal-btn" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Formulario del Modal -->
+                <form id="client-form" class="mt-4 space-y-4">
+                    <!-- ID Oculto para Edición -->
+                    <input type="hidden" id="client_id" name="client_id">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="first_name" class="block text-sm font-medium text-gray-700">Nombre(s)</label>
+                            <input type="text" name="first_name" id="first_name" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="last_name" class="block text-sm font-medium text-gray-700">Apellido(s)</label>
+                            <input type="text" name="last_name" id="last_name" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="phone" class="block text-sm font-medium text-gray-700">Teléfono</label>
+                            <input type="tel" name="phone" id="phone" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                            <input type="email" name="email" id="email" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="address" class="block text-sm font-medium text-gray-700">Dirección</label>
+                        <input type="text" name="address" id="address" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="personal_id_number" class="block text-sm font-medium text-gray-700">Nº Identificación (INE/Cédula)</label>
+                            <input type="text" name="personal_id_number" id="personal_id_number" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="status" class="block text-sm font-medium text-gray-700">Estado Cliente</label>
+                            <select name="status" id="status" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                                <option value="potencial">Potencial</option>
+                                <option value="activo">Activo</option>
+                                <option value="moroso">Moroso</option>
+                                <option value="vetado">Vetado</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="route_id" class="block text-sm font-medium text-gray-700">Ruta Asignada</label>
+                            <select name="route_id" id="route_id" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Cargando rutas...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="references" class="block text-sm font-medium text-gray-700">Referencias (Formato JSON)</label>
+                        <textarea name="references" id="references" rows="3" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-blue-500 focus:border-blue-500" placeholder='{ "ref1_nombre": "Ana", "ref1_tel": "555-1234" }'></textarea>
+                        <p class="text-xs text-gray-500">Usar formato JSON, ej: {"nombre": "Juan", "tel": "123"}</p>
+                    </div>
+
+                    <!-- Botones del Footer -->
+                    <div class="pt-4 border-t flex justify-end space-x-3">
+                        <button type="button" id="cancel-client-modal-btn" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 transition duration-300">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition duration-300">
+                            Guardar Cliente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- MODAL GESTIÓN DE PRÉSTAMOS -->
+    <!-- ============================================== -->
+    <div id="loan-modal" class="hidden fixed inset-0 z-40 overflow-y-auto bg-gray-600 bg-opacity-75">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <!-- Contenido del Modal -->
+            <div class="bg-white rounded-lg shadow-xl p-6 m-4 max-w-3xl w-full relative">
+                <!-- Encabezado del Modal -->
+                <div class="flex justify-between items-center pb-3 border-b">
+                    <h3 id="loan-modal-title" class="text-2xl font-semibold text-gray-900">Nuevo Préstamo</h3>
+                    <button id="close-loan-modal-btn" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Formulario del Modal -->
+                <form id="loan-form" class="mt-4 space-y-4">
+                    <input type="hidden" id="loan_id" name="loan_id">
+
+                    <!-- Sección 1: Cliente y Fechas -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="md:col-span-1">
+                            <label for="loan_client_id" class="block text-sm font-medium text-gray-700">Cliente</label>
+                            <select name="client_id" id="loan_client_id" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Cargando clientes...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="issue_date" class="block text-sm font-medium text-gray-700">Fecha de Entrega</label>
+                            <input type="date" name="issue_date" id="issue_date" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="first_payment_date" class="block text-sm font-medium text-gray-700">Fecha Primer Pago</label>
+                            <input type="date" name="first_payment_date" id="first_payment_date" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- Sección 2: Cálculo de Préstamo -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Columna Izquierda: Entradas -->
+                        <div class="space-y-4 p-4 border rounded-lg">
+                            <h4 class="font-medium text-gray-800">Detalles del Préstamo</h4>
+                            <div>
+                                <label for="amount" class="block text-sm font-medium text-gray-700">Monto a Prestar</label>
+                                <input type="number" name="amount" id="amount" step="0.01" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: 5000">
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="interest_rate" class="block text-sm font-medium text-gray-700">Tasa Interés (%)</label>
+                                    <input type="number" name="interest_rate" id="interest_rate" step="0.1" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: 10">
+                                    <p class="text-xs text-gray-500">Tasa por periodo (ej: 10% semanal)</p>
+                                </div>
+                                <div>
+                                    <label for="term_type" class="block text-sm font-medium text-gray-700">Periodo</label>
+                                    <select name="term_type" id="term_type" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="semanal">Semanal</option>
+                                        <option value="quincenal">Quincenal (14 días)</option>
+                                        <option value="mensual">Mensual</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="total_payments" class="block text-sm font-medium text-gray-700">Número de Cuotas</label>
+                                <input type="number" name="total_payments" id="total_payments" step="1" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: 12">
+                            </div>
+                        </div>
+                        
+                        <!-- Columna Derecha: Resultados -->
+                        <div class="space-y-4 p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-medium text-gray-800">Resumen de Pagos (Calculado)</h4>
+                            <p class="text-sm text-gray-600">Complete los campos de la izquierda para ver el resumen. (Usando Interés Simple)</p>
+                            <div id="loan-calc-results" class="mt-4 space-y-2 text-sm">
+                                <!-- Resultados de la calculadora se insertan aquí -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección 3: Opciones Adicionales -->
+                    <div>
+                        <label for="collection_method" class="block text-sm font-medium text-gray-700">Método de Cobro</label>
+                        <select name="collection_method" id="collection_method" class="mt-1 w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                            <option value="cobrador">Cobrador en Ruta</option>
+                            <option value="ventanilla">Ventanilla / Oficina</option>
+                            <option value="banco">Depósito Bancario</option>
+                        </select>
+                    </div>
+
+                    <!-- Botones del Footer -->
+                    <div class="pt-4 border-t flex justify-end space-x-3">
+                        <button type="button" id="cancel-loan-modal-btn" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 transition duration-300">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition duration-300">
+                            Guardar Préstamo
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- MODAL DETALLE DE PRÉSTAMO Y PAGOS -->
+    <!-- ============================================== -->
+    <div id="payment-modal" class="hidden fixed inset-0 z-40 overflow-y-auto bg-gray-600 bg-opacity-75">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <!-- Contenido del Modal -->
+            <div class="bg-white rounded-lg shadow-xl p-6 m-4 max-w-5xl w-full relative">
+                <!-- Encabezado del Modal -->
+                <div class="flex justify-between items-center pb-3 border-b">
+                    <h3 id="payment-modal-title" class="text-2xl font-semibold text-gray-900">Detalle Préstamo #</h3>
+                    <button id="close-payment-modal-btn" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Cuerpo del Modal -->
+                <div class="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Columna 1: Registrar Pago y Resumen -->
+                    <div class="lg:col-span-1 space-y-6">
+                        <!-- Resumen del Préstamo -->
+                        <div class="bg-white border border-gray-200 rounded-lg p-4">
+                            <h4 class="text-lg font-semibold text-gray-800 mb-3">Resumen del Préstamo</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Cliente:</span>
+                                    <span id="loan-detail-client" class="font-medium text-gray-900">...</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Monto Prestado:</span>
+                                    <span id="loan-detail-amount" class="font-medium text-gray-900">...</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Total a Pagar:</span>
+                                    <span id="loan-detail-total" class="font-medium text-gray-900">...</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Estado:</span>
+                                    <span id="loan-detail-status">...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Formulario de Registro de Pago -->
+                        <div class="bg-white border border-gray-200 rounded-lg p-4">
+                            <h4 class="text-lg font-semibold text-gray-800 mb-3">Registrar Nuevo Pago</h4>
+                            <form id="payment-form" class="space-y-4">
+                                <input type="hidden" id="payment_loan_id" name="loan_id">
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="amount_paid" class="block text-sm font-medium text-gray-700">Monto a Pagar</label>
+                                        <input type="number" name="amount_paid" id="amount_paid" step="0.01" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="mora_paid" class="block text-sm font-medium text-gray-700">Mora (Opcional)</label>
+                                        <input type="number" name="mora_paid" id="mora_paid" step="0.01" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="0.00">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="payment_date" class="block text-sm font-medium text-gray-700">Fecha de Pago</label>
+                                        <input type="datetime-local" name="payment_date" id="payment_date" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="payment_method" class="block text-sm font-medium text-gray-700">Método</label>
+                                        <select name="payment_method" id="payment_method" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="efectivo">Efectivo</option>
+                                            <option value="transferencia">Transferencia</option>
+                                            <option value="tarjeta">Tarjeta</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="notes" class="block text-sm font-medium text-gray-700">Notas (Opcional)</label>
+                                    <input type="text" name="notes" id="notes" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: Abono de cuota 5">
+                                </div>
+                                <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 transition duration-300">
+                                    Registrar Abono
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Columna 2: Calendario e Historial -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Calendario de Pagos -->
+                        <div class="bg-white border border-gray-200 rounded-lg p-4">
+                            <h4 class="text-lg font-semibold text-gray-800 mb-3">Calendario de Cuotas</h4>
+                            <div class="overflow-y-auto max-h-60 border rounded-lg">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50 sticky top-0">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cuota #</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha Venc.</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Monto</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="payment-schedule-body" class="bg-white divide-y divide-gray-200">
+                                        <!-- Cuotas se insertan aquí -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Historial de Abonos -->
+                        <div class="bg-white border border-gray-200 rounded-lg p-4">
+                            <h4 class="text-lg font-semibold text-gray-800 mb-3">Historial de Abonos Realizados</h4>
+                            <div class="overflow-y-auto max-h-60 border rounded-lg">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50 sticky top-0">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha Pago</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Monto Pagado</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Método</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notas</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="payment-history-body" class="bg-white divide-y divide-gray-200">
+                                        <!-- Pagos se insertan aquí -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- (NUEVO) MODAL GESTIÓN DE RUTAS -->
+    <!-- ============================================== -->
+    <div id="route-modal" class="hidden fixed inset-0 z-40 overflow-y-auto bg-gray-600 bg-opacity-75">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-white rounded-lg shadow-xl p-6 m-4 max-w-lg w-full relative">
+                <div class="flex justify-between items-center pb-3 border-b">
+                    <h3 id="route-modal-title" class="text-2xl font-semibold text-gray-900">Nueva Ruta</h3>
+                    <button id="close-route-modal-btn" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <form id="route-form" class="mt-4 space-y-4">
+                    <input type="hidden" id="route_id_input" name="route_id">
+                    <div>
+                        <label for="route_name" class="block text-sm font-medium text-gray-700">Nombre de la Ruta</label>
+                        <input type="text" name="name" id="route_name" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: Ruta Centro">
+                    </div>
+                    <div>
+                        <label for="route_description" class="block text-sm font-medium text-gray-700">Descripción (Opcional)</label>
+                        <textarea name="description" id="route_description" rows="3" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: Barrios del centro de la ciudad"></textarea>
+                    </div>
+                    <div class="pt-4 border-t flex justify-end space-x-3">
+                        <button type="button" id="cancel-route-modal-btn" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 transition duration-300">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition duration-300">
+                            Guardar Ruta
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- (NUEVO) MODAL GESTIÓN DE USUARIOS -->
+    <!-- ============================================== -->
+    <div id="user-modal" class="hidden fixed inset-0 z-40 overflow-y-auto bg-gray-600 bg-opacity-75">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-white rounded-lg shadow-xl p-6 m-4 max-w-lg w-full relative">
+                <div class="flex justify-between items-center pb-3 border-b">
+                    <h3 id="user-modal-title" class="text-2xl font-semibold text-gray-900">Editar Usuario</h3>
+                    <button id="close-user-modal-btn" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <form id="user-form" class="mt-4 space-y-4">
+                    <input type="hidden" id="user_id_input" name="user_id">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Nombre</label>
+                        <p id="user_full_name" class="mt-1 text-lg font-medium text-gray-900"></p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Email</label>
+                        <p id="user_email_display" class="mt-1 text-gray-600"></p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="user_role" class="block text-sm font-medium text-gray-700">Rol del Usuario</label>
+                            <select name="role" id="user_role" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                                <option value="admin">Administrador</option>
+                                <option value="cobrador">Cobrador</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="user_route_id" class="block text-sm font-medium text-gray-700">Asignar Ruta (si es cobrador)</label>
+                            <select name="route_id" id="user_route_id" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sin asignar</option>
+                                <!-- Rutas se cargan aquí -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t flex justify-end space-x-3">
+                        <button type="button" id="cancel-user-modal-btn" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 transition duration-300">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition duration-300">
+                            Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Librería para los tabs (Alpine.js) -->
+    <script src="https://unpkg.com/alpinejs" defer></script>
+</body>
+</html>
