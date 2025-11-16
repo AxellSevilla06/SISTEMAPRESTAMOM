@@ -118,7 +118,8 @@ function handleConfirm() {
 }
 
 function formatCurrency(value) {
-    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
+    // Corregido para Córdoba Nicaragüense (NIO)
+    return new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO' }).format(value);
 }
 
 function formatDate(dateString) {
@@ -1429,4 +1430,5 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUIBasedOnAuth(session);
         });
     }
+
 });
