@@ -1432,3 +1432,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
