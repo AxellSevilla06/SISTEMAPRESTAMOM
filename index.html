@@ -213,12 +213,17 @@
                 <!-- Pestaña (1.1) Gestión Clientes -->
                 <div x-show="adminTab === 'clients'" style="display: none;">
                     <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-                        <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-2xl font-bold text-gray-800">Gestión de Clientes</h2>
-                            <button id="open-client-modal-btn" class="bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition duration-300">
-                                + Nuevo Cliente
-                            </button>
-                        </div>
+                        <!-- (NUEVO) Barra de Búsqueda Clientes -->
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold text-gray-800">Gestión de Clientes</h2>
+                            <div class="flex items-center space-x-4">
+                                <input type="text" id="client-search-input" placeholder="Buscar por nombre, cédula, o teléfono..." class="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                
+                                <button id="open-client-modal-btn" class="bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition duration-300">
+                                    + Nuevo Cliente
+                                </button>
+                            </div>
+                        </div>
                         
                         <!-- Tabla de Clientes -->
                         <div class="overflow-x-auto">
@@ -505,9 +510,14 @@
                     <!-- Sección 1: Cliente y Fechas -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="md:col-span-1">
-                            <label for="loan_client_id" class="block text-sm font-medium text-gray-700">Cliente</label>
-                            <select name="client_id" id="loan_client_id" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">Cargando clientes...</option>
+                            <label for="loan_client_search" class="block text-sm font-medium text-gray-700">Buscar Cliente</label>
+                            <!-- NUEVO: Campo de Búsqueda para el modal -->
+                            <input type="text" id="loan_client_search" placeholder="Escriba el nombre o cédula..." class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                            
+                            <label for="loan_client_id" class="block text-sm font-medium text-gray-700 mt-2">Cliente Seleccionado</label>
+                            <select name="client_id" id="loan_client_id" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Seleccione un cliente de la búsqueda</option>
+             
                             </select>
                         </div>
                         <div>
@@ -818,3 +828,4 @@
 </body>
 
 </html>
+
