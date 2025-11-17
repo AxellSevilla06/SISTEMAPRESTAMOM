@@ -166,17 +166,17 @@
                             Inicio (Admin)
                         </button>
                         <button @click="adminTab = 'clients'; window.loadClients()" :class="{ 'border-blue-500 text-blue-600': adminTab === 'clients', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': adminTab !== 'clients' }" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                            (1.1) Gestión Clientes
+                             Gestión Clientes
                         </button>
                         <button @click="adminTab = 'loans'; window.loadLoans()" :class="{ 'border-blue-500 text-blue-600': adminTab === 'loans', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': adminTab !== 'loans' }" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                            (1.2) Gestión Préstamos
+                             Gestión Préstamos
                         </button>
                         <button @click="adminTab = 'users'; window.loadRoutesTable(); window.loadUsersTable()" :class="{ 'border-blue-500 text-blue-600': adminTab === 'users', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': adminTab !== 'users' }" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                            (2.1) Usuarios y Rutas
+                             Usuarios y Rutas
                         </button>
                         <!-- (NUEVO) Click handler añadido -->
                         <button @click="adminTab = 'reports'; window.loadReportsDashboard()" :class="{ 'border-blue-500 text-blue-600': adminTab === 'reports', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': adminTab !== 'reports' }" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                            (1.4) Reportes
+                             Reportes
                         </button>
                     </nav>
                 </div>
@@ -828,6 +828,7 @@
 </body>
 
 </html>
+
 
 
 
