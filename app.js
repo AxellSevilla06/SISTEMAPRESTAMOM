@@ -65,6 +65,9 @@ let userFullNameDisplay, userEmailDisplayEl, userRoleSelect, userRouteSelect;
 // --- (NUEVO) Selectores Módulo Reportes ---
 let kpiTotalLoaned, kpiTotalCollected, kpiInterestEarned, kpiActiveLoans;
 let reportsStatusTableBody;
+// --- (NUEVO) Selectores de Búsqueda ---
+let clientSearchInput; // Campo de búsqueda en tabla de clientes
+let loanClientSearchInput; // Campo de búsqueda en modal de préstamo
 
 // --- Selectores Módulo Confirmación ---
 let confirmationModal, confirmText, confirmButton, cancelConfirmButton;
@@ -275,7 +278,10 @@ async function loadClients() {
     if (userRole !== 'admin' || !clientsTableBody) return;
     showLoading(true);
     
-    const { data, error } = await supabase
+    // (NUEVO) Obtener el término de búsqueda
+    const searchTerm = clientSearchInput ? clientSearchInput.value.trim() : '';
+    
+    let query = supabase
         .from('clients')
         .select(`
             id,
@@ -285,7 +291,18 @@ async function loadClients() {
             status,
             route_id,
             routes ( name ) 
-        `)
+        `);
+
+    // (NUEVO) Lógica de búsqueda avanzada
+    if (searchTerm) {
+        // 'ilike' es 'insensitive case' (ignora mayúsculas/minúsculas)
+        // 'or' busca en cualquiera de estas columnas
+        query = query.or(
+            `first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,personal_id_number.ilike.%${searchTerm}%`
+        );
+    }
+    
+    const { data, error } = await query
         .order('created_at', { ascending: false });
 
     showLoading(false);
@@ -460,14 +477,27 @@ function handleDeleteClient(clientId, clientName) {
 // ===================================================
 
 // Cargar Clientes (para el <select> del modal de préstamos)
-async function loadClientsForDropdown() {
+// Cargar Clientes (para el <select> del modal de préstamos)
+async function loadClientsForDropdown(searchTerm = '') { // (NUEVO) Acepta un término de búsqueda
     if (userRole !== 'admin' || !loanClientIdSelect) return;
 
-    const { data, error } = await supabase
+    let query = supabase
         .from('clients')
         .select('id, first_name, last_name')
-        .eq('status', 'activo') // Solo clientes activos pueden recibir préstamos
+        .eq('status', 'activo') // Solo clientes activos
         .order('first_name', { ascending: true });
+
+    // (NUEVO) Lógica de búsqueda en el dropdown
+    if (searchTerm) {
+        query = query.or(
+            `first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,personal_id_number.ilike.%${searchTerm}%`
+        );
+    } else {
+        // Si no hay búsqueda, solo cargamos los primeros 50 para evitar sobrecarga
+        query = query.limit(50);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         showNotification('Error al cargar clientes: ' + error.message, true);
@@ -1311,6 +1341,7 @@ document.addEventListener('DOMContentLoaded', () => {
     clientModalTitle = document.getElementById('client-modal-title');
     routeSelect = document.getElementById('route_id');
     clientIdInput = document.getElementById('client_id');
+    clientSearchInput = document.getElementById('client-search-input'); // <-- AGREGA ESTA LÍNEA
 
     // --- Préstamos ---
     loansTableBody = document.getElementById('loans-table-body');
@@ -1323,6 +1354,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loanClientIdSelect = document.getElementById('loan_client_id');
     loanCalcResults = document.getElementById('loan-calc-results');
     loanIdInput = document.getElementById('loan_id');
+    loanClientSearchInput = document.getElementById('loan_client_search'); // <-- AGREGA ESTA LÍNEA
 
     // --- Pagos ---
     paymentModal = document.getElementById('payment-modal');
@@ -1386,14 +1418,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if(cancelClientModalBtn) cancelClientModalBtn.addEventListener('click', closeClientModal);
     if(clientForm) clientForm.addEventListener('submit', handleClientSubmit);
     if(clientModal) clientModal.addEventListener('click', (e) => e.target === clientModal && closeClientModal());
+    if(clientSearchInput) clientSearchInput.addEventListener('keyup', loadClients); // <-- AGREGA ESTA LÍNEA
 
-    // --- Eventos Préstamos ---
-    if(openLoanModalBtn) openLoanModalBtn.addEventListener('click', () => openLoanModal(null));
+   // --- Eventos Préstamos ---
+    if(openLoanModalBtn) openLoanModalBtn.addEventListener('click', () => { // MODIFICADO
+        openLoanModal(null);
+        loadClientsForDropdown(''); // Carga inicial sin filtro
+    });
     if(closeLoanModalBtn) closeLoanModalBtn.addEventListener('click', closeLoanModal);
     if(cancelLoanModalBtn) cancelLoanModalBtn.addEventListener('click', closeLoanModal);
     if(loanForm) loanForm.addEventListener('submit', handleLoanSubmit);
     if(loanModal) loanModal.addEventListener('click', (e) => e.target === loanModal && closeLoanModal());
-    // Eventos para la calculadora
+    
+    // (NUEVO) Evento para la búsqueda en el modal
+    if(loanClientSearchInput) loanClientSearchInput.addEventListener('keyup', (e) => { 
+        loadClientsForDropdown(e.target.value);
+    });
+    
+    // (AÑADIDO OTRA VEZ) Eventos para la calculadora
     const calcInputs = ['amount', 'interest_rate', 'total_payments', 'term_type'];
     calcInputs.forEach(id => {
         const el = document.getElementById(id);
@@ -1432,4 +1474,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
