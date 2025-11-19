@@ -210,25 +210,28 @@
                     </div>
                 </div>
 
-                <!-- Pestaña (1.1) Gestión Clientes -->
-                <div x-show="adminTab === 'clients'" style="display: none;">
-                    <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-                        <!-- (NUEVO) Barra de Búsqueda Clientes -->
-                        <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-2xl font-bold text-gray-800">Gestión de Clientes</h2>
-                            <div class="flex items-center space-x-4">
-                                <input type="text" id="client-search-input" placeholder="Buscar por nombre, cédula, o teléfono..." class="w-56 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                
-                                <button id="open-client-modal-btn" class="bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition duration-300 whitespace-nowrap">
-                                    + Nuevo Cliente
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Tabla de Clientes -->
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
+              <!-- Pestaña (1.1) Gestión Clientes -->
+<div x-show="adminTab === 'clients'" style="display: none;">
+    <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
+        <!-- CORRECCIÓN: Barra de Búsqueda y Botón en un contenedor flexible -->
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-800">Gestión de Clientes</h2>
+            <div class="flex items-center space-x-4">
+                <!-- Ancho w-56 para que no empuje al botón -->
+                <input type="text" id="client-search-input" placeholder="Buscar por nombre, cédula..." class="w-56 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                
+                <!-- whitespace-nowrap para que el texto del botón no se rompa -->
+                <button id="open-client-modal-btn" class="bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition duration-300 whitespace-nowrap">
+                    + Nuevo Cliente
+                </button>
+            </div>
+        </div>
+        
+        <!-- Tabla de Clientes -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <!-- ... el resto de la tabla sigue igual ... -->
                                     <tr>
                                         <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
                                         <th scope="col" class="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
@@ -508,18 +511,18 @@
                     <input type="hidden" id="loan_id" name="loan_id">
 
                     <!-- Sección 1: Cliente y Fechas -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="md:col-span-1">
-                            <label for="loan_client_search" class="block text-sm font-medium text-gray-700">Buscar Cliente</label>
-                            <!-- NUEVO: Campo de Búsqueda para el modal -->
-                            <input type="text" id="loan_client_search" placeholder="Escriba el nombre o cédula..." class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                            
-                            <label for="loan_client_id" class="block text-sm font-medium text-gray-700 mt-2">Cliente Seleccionado</label>
-                            <select name="client_id" id="loan_client_id" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">Seleccione un cliente de la búsqueda</option>
-             
+                            <label for="loan_client_search" class="block text-sm font-medium text-gray-700">Buscar Cliente</label>
+                            <!-- NUEVO: Campo de Búsqueda para el modal -->
+                            <input type="text" id="loan_client_search" placeholder="Escriba el nombre o cédula..." class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                            
+                            <label for="loan_client_id" class="block text-sm font-medium text-gray-700 mt-2">Cliente Seleccionado</label>
+                            <select name="client_id" id="loan_client_id" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Seleccione un cliente de la búsqueda</option>
                             </select>
                         </div>
+                        <!-- ... el resto del grid sigue igual ... -->
                         <div>
                             <label for="issue_date" class="block text-sm font-medium text-gray-700">Fecha de Entrega</label>
                             <input type="date" name="issue_date" id="issue_date" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
@@ -828,6 +831,7 @@
 </body>
 
 </html>
+
 
 
 
