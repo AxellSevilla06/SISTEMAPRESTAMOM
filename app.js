@@ -973,10 +973,13 @@ function renderScheduleTable(schedule) {
 }
 
 // Renderizar tabla de historial de abonos
+// Renderizar tabla de historial de abonos
 function renderPaymentsTable(payments) {
+    if (!paymentHistoryBody) return;
     paymentHistoryBody.innerHTML = '';
     if (payments.length === 0) {
-        paymentHistoryBody.innerHTML = `<tr><td colspan="4" class="text-center text-gray-500 py-4">No se han registrado abonos.</td></tr>`;
+        // Colspan debe ser 5 para coincidir con el nuevo encabezado
+        paymentHistoryBody.innerHTML = `<tr><td colspan="5" class="text-center text-gray-500 py-4">No se han registrado abonos.</td></tr>`; 
         return;
     }
     payments.forEach(payment => {
@@ -986,8 +989,22 @@ function renderPaymentsTable(payments) {
             <td class="px-4 py-3 text-sm text-gray-700">${formatCurrency(payment.amount_paid)}</td>
             <td class="px-4 py-3 text-sm text-gray-700">${payment.method}</td>
             <td class="px-4 py-3 text-sm text-gray-700">${payment.notes || ''}</td>
-        `;
+            <!-- NUEVO: Columna de botón -->
+            <td class="px-4 py-3 text-sm text-right">
+                <button data-payment-id="${payment.id}" data-loan-id="${payment.loan_id}" 
+                        class="text-red-600 hover:text-red-900 delete-payment-btn">Borrar</button>
+            </td>
+        `; 
         paymentHistoryBody.appendChild(tr);
+    });
+
+    // (NUEVO) Conectar eventos para el botón de borrar
+    document.querySelectorAll('.delete-payment-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const paymentId = e.target.dataset.paymentId;
+            const loanId = e.target.dataset.loanId;
+            handleDeletePayment(paymentId, loanId); // Llama a la nueva función
+        });
     });
 }
 
@@ -1474,5 +1491,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
 
