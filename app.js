@@ -1061,6 +1061,32 @@ async function handlePaymentSubmit(e) {
         loadAdminDashboard();
     }
 }
+// (NUEVO) Borrar un abono y recalcular todo el préstamo
+function handleDeletePayment(paymentId, loanId) {
+    openConfirmationModal(`¿Estás seguro de que quieres borrar este abono? El sistema recalculará el saldo del préstamo.`, async () => {
+        showLoading(true);
+
+        // Llama al RPC (la función SQL que creamos en el Paso 3)
+        const { error } = await supabase.rpc('delete_payment_and_recalculate', {
+            p_payment_id: paymentId,
+            p_loan_id: loanId
+        });
+
+        showLoading(false);
+
+        if (error) {
+            showNotification('Error al borrar el abono: ' + error.message, true);
+            console.error('Error RPC delete_payment:', error);
+        } else {
+            showNotification('Abono borrado. El préstamo ha sido recalculado.', false);
+            // Recargar el modal para ver los cambios en el calendario y el resumen
+            handleViewLoan(loanId);
+            // Recargar la lista de préstamos y el dashboard principal
+            loadLoans();
+            loadAdminDashboard();
+        }
+    });
+}
 // ===================================================
 // MÓDULO 2.1: GESTIÓN DE USUARIOS Y RUTAS
 // ===================================================
@@ -1491,6 +1517,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
 
 
