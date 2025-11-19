@@ -973,7 +973,6 @@ function renderScheduleTable(schedule) {
 }
 
 // Renderizar tabla de historial de abonos
-// Renderizar tabla de historial de abonos
 function renderPaymentsTable(payments) {
     if (!paymentHistoryBody) return;
     paymentHistoryBody.innerHTML = '';
@@ -1079,9 +1078,8 @@ function handleDeletePayment(paymentId, loanId) {
             console.error('Error RPC delete_payment:', error);
         } else {
             showNotification('Abono borrado. El préstamo ha sido recalculado.', false);
-            // Recargar el modal para ver los cambios en el calendario y el resumen
+            // Recargar la vista para reflejar el cambio
             handleViewLoan(loanId);
-            // Recargar la lista de préstamos y el dashboard principal
             loadLoans();
             loadAdminDashboard();
         }
@@ -1490,6 +1488,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(paymentForm) paymentForm.addEventListener('submit', handlePaymentSubmit);
     if(paymentModal) paymentModal.addEventListener('click', (e) => e.target === paymentModal && closePaymentModal());
     
+    
     // --- Eventos Rutas ---
     if(openRouteModalBtn) openRouteModalBtn.addEventListener('click', () => openRouteModal(null));
     if(closeRouteModalBtn) closeRouteModalBtn.addEventListener('click', closeRouteModal);
@@ -1517,6 +1516,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
 
 
