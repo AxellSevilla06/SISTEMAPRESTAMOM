@@ -1099,7 +1099,7 @@ async function handlePaymentSubmit(e) {
     }
 }
 // (NUEVO) Borrar un abono y recalcular todo el préstamo
-function handleDeletePayment(paymentId, loanId) {
+ async function handleDeletePayment(paymentId, loanId) {
     openConfirmationModal(`¿Estás seguro de que quieres borrar este abono? El sistema recalculará el saldo del préstamo.`, async () => {
         showLoading(true);
 
@@ -1554,3 +1554,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
