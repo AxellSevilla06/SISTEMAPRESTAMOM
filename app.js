@@ -800,21 +800,6 @@ async function handleLoanSubmit(e) {
 }
 
 
-    // Llamar a la función RPC de Supabase
-    const { data, error } = await supabase.rpc('create_loan_with_schedule', loanData);
-
-    showLoading(false);
-
-    if (error) {
-        // CORRECCIÓN: Se eliminó el '...'
-        showNotification('Vaya, parece que hubo un error: ' + error.message, true);
-        console.error('Error RPC create_loan:', error);
-    } else {
-        showNotification('Préstamo y calendario de pagos creados con éxito.', false);
-        closeLoanModal();
-        loadLoans(); // Recargar la tabla de préstamos
-    }
-}
 
 // (NUEVO) Borrar Préstamo
 async function handleDeleteLoan(loanId, clientName) {
@@ -1556,6 +1541,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
 
 
