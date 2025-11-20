@@ -826,6 +826,8 @@ async function handleLoanSubmit(e) {
 
 // (NUEVO) Borrar Préstamo
 async function handleDeleteLoan(loanId, clientName) {
+    // El 'await' que causa el error debe estar dentro de un bloque async.
+    // Usaremos esta estructura para asegurar que el await funcione correctamente
     openConfirmationModal(`¿Seguro que quieres borrar el préstamo de "${clientName}"? Se borrarán también todas sus cuotas y abonos registrados. Esta acción no se puede deshacer.`, async () => {
         showLoading(true);
         
@@ -1597,6 +1599,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
 
 
