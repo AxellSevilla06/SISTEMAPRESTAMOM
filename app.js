@@ -518,18 +518,31 @@ async function loadLoans() {
     if (userRole !== 'admin' || !loansTableBody) return;
     showLoading(true);
     
-    const { data, error } = await supabase
+    // (NUEVO) Lógica de búsqueda principal
+    const searchTerm = clientSearchInput ? clientSearchInput.value.trim() : '';
+    
+    let query = supabase
         .from('loans')
         .select(`
             id,
             client_id,
             amount,
             total_to_pay,
+            total_interest,  
             total_payments,
             term_type,
             status,
-            clients ( first_name, last_name )
-        `)
+            clients ( first_name, last_name, phone, personal_id_number ) 
+        `);
+
+    // (NUEVO) Aplicar filtro de búsqueda al JOIN
+    if (searchTerm) {
+        query = query.or(
+            `clients.first_name.ilike.%${searchTerm}%,clients.last_name.ilike.%${searchTerm}%,clients.phone.ilike.%${searchTerm}%,clients.personal_id_number.ilike.%${searchTerm}%`
+        );
+    }
+
+    const { data, error } = await query
         .order('created_at', { ascending: false });
 
     showLoading(false);
@@ -1065,22 +1078,18 @@ function handleDeletePayment(paymentId, loanId) {
     openConfirmationModal(`¿Estás seguro de que quieres borrar este abono? El sistema recalculará el saldo del préstamo.`, async () => {
         showLoading(true);
 
-        // Llama al RPC (la función SQL que creamos en el Paso 3)
         const { error } = await supabase.rpc('delete_payment_and_recalculate', {
-            p_payment_id: paymentId,
-            p_loan_id: loanId
+            p_payment_id: paymentId, p_loan_id: loanId
         });
 
         showLoading(false);
 
         if (error) {
             showNotification('Error al borrar el abono: ' + error.message, true);
-            console.error('Error RPC delete_payment:', error);
         } else {
             showNotification('Abono borrado. El préstamo ha sido recalculado.', false);
-            // Recargar la vista para reflejar el cambio
             handleViewLoan(loanId);
-            loadLoans();
+            loadLoans(); // <-- LLama a la función corregida de arriba
             loadAdminDashboard();
         }
     });
@@ -1516,6 +1525,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
 
 
