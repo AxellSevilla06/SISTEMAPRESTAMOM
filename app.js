@@ -753,7 +753,7 @@ async function handleLoanSubmit(e) {
     const loanData = {
         p_client_id: formData.get('client_id'),
         p_amount: amount,
-        p_interest_rate: interestRate,
+        p_interest_rate: interestRate / 100, // Convertir a decimal
         p_total_payments: totalPayments,
         p_term_type: formData.get('term_type'),
         p_issue_date: formData.get('issue_date'),
@@ -785,7 +785,7 @@ async function handleLoanSubmit(e) {
         console.warn('No se pudo asignar cobrador automáticamente.');
     }
 
-    // Llamar al NUEVO RPC de Amortización (Corrección Importante)
+    // Llamar al NUEVO RPC de Amortización
     const { data, error } = await supabase.rpc('create_amortization_schedule', loanData);
 
     showLoading(false);
@@ -1568,6 +1568,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
 
 
