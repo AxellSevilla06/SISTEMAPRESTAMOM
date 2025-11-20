@@ -702,7 +702,6 @@ function calculateLoanTotals() {
 }
 
 // Guardar (Crear) Préstamo
-// Guardar (Crear) Préstamo
 async function handleLoanSubmit(e) {
     e.preventDefault();
     const formData = new FormData(loanForm);
@@ -729,7 +728,7 @@ async function handleLoanSubmit(e) {
         p_first_payment_date: formData.get('first_payment_date'),
         p_collection_method: formData.get('collection_method'),
         
-        // Obtener la ruta y cobrador
+        // Lo buscaremos a continuación
         p_route_id: null, 
         p_cobrador_id: null, 
     };
@@ -773,7 +772,7 @@ async function handleLoanSubmit(e) {
     }
 
 
-    // Llama al NUEVO RPC de amortización (Este RPC aún no existe en su DB!)
+    // Llama al NUEVO RPC de amortización (Este es el que DEBE ejecutarse)
     const { data, error } = await supabase.rpc('create_amortization_schedule', {
         p_client_id: loanData.p_client_id,
         p_amount: amount,
@@ -796,6 +795,7 @@ async function handleLoanSubmit(e) {
         showNotification('Préstamo y calendario de pagos creados con éxito.', false);
         closeLoanModal();
         loadLoans(); // Recargar la tabla de préstamos
+        loadAdminDashboard(); // Actualizar KPIs
     }
 }
 
@@ -1556,5 +1556,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
 
