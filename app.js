@@ -109,6 +109,30 @@ function handleDeletePayment(paymentId, loanId) {
         }
     });
 }
+// (NUEVO) Borrar Préstamo
+async function handleDeleteLoan(loanId, clientName) {
+    // El 'await' que causa el error debe estar dentro de un bloque async.
+    // Usaremos esta estructura para asegurar que el await funcione correctamente
+    openConfirmationModal(`¿Seguro que quieres borrar el préstamo de "${clientName}"? Se borrarán también todas sus cuotas y abonos registrados. Esta acción no se puede deshacer.`, async () => {
+        showLoading(true);
+        
+        // 1. Borrar pagos (payments)
+        const { error: pmtError } = await supabase.from('payments').delete().eq('loan_id', loanId);
+        // 2. Borrar calendario (payment_schedule)
+        const { error: schError } = await supabase.from('payment_schedule').delete().eq('loan_id', loanId);
+        // 3. Borrar préstamo (loans)
+        const { error: loanError } = await supabase.from('loans').delete().eq('id', loanId);
+        
+        showLoading(false);
+        
+        if (pmtError || schError || loanError) {
+            showNotification('Vaya, parece que hubo un error al borrar: ' + (pmtError?.message || schError?.message || loanError?.message), true);
+        } else {
+            showNotification('Préstamo borrado con éxito.', false);
+            loadLoans(); // Recargar la tabla
+        }
+    });
+}
 
 // --- Funciones de Utilidad ---
 function showNotification(message, isError = false) {
@@ -824,30 +848,6 @@ async function handleLoanSubmit(e) {
     }
 }
 
-// (NUEVO) Borrar Préstamo
-async function handleDeleteLoan(loanId, clientName) {
-    // El 'await' que causa el error debe estar dentro de un bloque async.
-    // Usaremos esta estructura para asegurar que el await funcione correctamente
-    openConfirmationModal(`¿Seguro que quieres borrar el préstamo de "${clientName}"? Se borrarán también todas sus cuotas y abonos registrados. Esta acción no se puede deshacer.`, async () => {
-        showLoading(true);
-        
-        // 1. Borrar pagos (payments)
-        const { error: pmtError } = await supabase.from('payments').delete().eq('loan_id', loanId);
-        // 2. Borrar calendario (payment_schedule)
-        const { error: schError } = await supabase.from('payment_schedule').delete().eq('loan_id', loanId);
-        // 3. Borrar préstamo (loans)
-        const { error: loanError } = await supabase.from('loans').delete().eq('id', loanId);
-        
-        showLoading(false);
-        
-        if (pmtError || schError || loanError) {
-            showNotification('Vaya, parece que hubo un error al borrar: ' + (pmtError?.message || schError?.message || loanError?.message), true);
-        } else {
-            showNotification('Préstamo borrado con éxito.', false);
-            loadLoans(); // Recargar la tabla
-        }
-    });
-}
 // ===================================================
 // MÓDULO 1.4: REPORTES Y ESTADÍSTICAS (ADMIN)
 // ===================================================
@@ -1599,6 +1599,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
 
 
