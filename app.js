@@ -798,6 +798,112 @@ async function handleLoanSubmit(e) {
         loadAdminDashboard(); // Actualizar KPIs
     }
 }
+// Guardar (Crear) Préstamo
+async function handleLoanSubmit(e) {
+    e.preventDefault();
+    const formData = new FormData(loanForm);
+    const loanId = loanIdInput.value;
+
+    if (loanId) {
+        showNotification('La edición de préstamos aún no está implementada.', true);
+        return;
+    }
+
+    // Recalcular valores para asegurar consistencia
+    const amount = parseFloat(formData.get('amount')) || 0;
+    const interestRate = parseFloat(formData.get('interest_rate')) || 0;
+    const totalPayments = parseInt(formData.get('total_payments')) || 0;
+
+    // Datos para la función RPC
+    const loanData = {
+        p_client_id: formData.get('client_id'),
+        p_amount: amount,
+        p_interest_rate: interestRate / 100, // IMPORTANTE: Convertir a decimal
+        p_total_payments: totalPayments,
+        p_term_type: formData.get('term_type'),
+        p_issue_date: formData.get('issue_date'),
+        p_first_payment_date: formData.get('first_payment_date'),
+        p_collection_method: formData.get('collection_method'),
+        p_route_id: null, 
+        p_cobrador_id: null, 
+    };
+    
+    // Validaciones
+    if (!loanData.p_client_id || !loanData.p_amount > 0 || !loanData.p_interest_rate > 0 || !loanData.p_total_payments > 0) {
+        showNotification('Formulario incompleto. Revise los campos.', true);
+        return;
+    }
+    
+    showLoading(true);
+
+    // Buscar ruta y cobrador
+    try {
+        const { data: clientData, error: clientError } = await supabase
+            .from('clients')
+            .select('route_id')
+            .eq('id', loanData.p_client_id)
+            .single();
+        
+        if (clientError) throw clientError;
+        
+        loanData.p_route_id = clientData.route_id;
+
+        if(clientData.route_id) {
+            const { data: cobradorData } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('route_id', clientData.route_id)
+                .eq('role', 'cobrador')
+                .limit(1) 
+                .single();
+            
+            if (cobradorData) {
+                loanData.p_cobrador_id = cobradorData.id;
+            }
+        }
+
+    } catch (error) {
+        console.warn('No se pudo asignar cobrador automáticamente:', error.message);
+    }
+
+    // Llama al NUEVO RPC de amortización (Línea crítica, ahora dentro de la función)
+    const { data, error } = await supabase.rpc('create_amortization_schedule', loanData);
+
+    showLoading(false);
+
+    if (error) {
+        showNotification('Error al crear el préstamo: ' + error.message, true);
+        console.error('Error RPC create_amortization_schedule:', error);
+    } else {
+        showNotification('Préstamo y calendario de pagos creados con éxito.', false);
+        closeLoanModal();
+        loadLoans(); // Recargar la tabla de préstamos
+        loadAdminDashboard(); // Actualizar KPIs
+    }
+}
+// (NUEVO) Borrar Préstamo
+async function handleDeleteLoan(loanId, clientName) {
+    openConfirmationModal(`¿Seguro que quieres borrar el préstamo de "${clientName}"? Se borrarán también todas sus cuotas y abonos registrados. Esta acción no se puede deshacer.`, async () => {
+        showLoading(true);
+        
+        // 1. Borrar pagos (payments)
+        const { error: pmtError } = await supabase.from('payments').delete().eq('loan_id', loanId);
+        // 2. Borrar calendario (payment_schedule)
+        const { error: schError } = await supabase.from('payment_schedule').delete().eq('loan_id', loanId);
+        // 3. Borrar préstamo (loans)
+        const { error: loanError } = await supabase.from('loans').delete().eq('id', loanId);
+        
+        showLoading(false);
+        
+        if (pmtError || schError || loanError) {
+            showNotification('Vaya, parece que hubo un error al borrar: ' + (pmtError?.message || schError?.message || loanError?.message), true);
+        } else {
+            showNotification('Préstamo borrado con éxito.', false);
+            loadLoans(); // Recargar la tabla
+            loadAdminDashboard(); // Actualizar KPIs
+        }
+    });
+}
 
 
 
@@ -1518,6 +1624,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
 
 
