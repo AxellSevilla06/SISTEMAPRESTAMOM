@@ -49,7 +49,7 @@ let openClientModalBtn, cancelClientModalBtn;
 
 // --- Selectores Módulo Préstamos ---
 let loansTableBody, loanModal, loanForm, closeLoanModalBtn, loanModalTitle, loanClientIdSelect;
-let openLoanModalBtn, cancelLoanModalBtn, loanCalcResults, loanIdInput;
+let openLoanModalBtn, cancelLoanModalBtn, loanCalcResults, loanIdInput; // << AQUÍ ESTÁ CORREGIDO loanIdInput
 
 // --- Selectores Módulo Pagos ---
 let paymentModal, paymentForm, closePaymentModalBtn, paymentModalTitle, paymentLoanIdInput;
@@ -62,12 +62,16 @@ let openRouteModalBtn, cancelRouteModalBtn;
 let usersTableBody, userModal, userForm, closeUserModalBtn, cancelUserModalBtn, userModalTitle, userIdInput;
 let userFullNameDisplay, userEmailDisplayEl, userRoleSelect, userRouteSelect;
 
-// --- (NUEVO) Selectores Módulo Reportes ---
+// --- Selectores Módulo Reportes ---
 let kpiTotalLoaned, kpiTotalCollected, kpiInterestEarned, kpiActiveLoans;
 let reportsStatusTableBody;
-// --- (NUEVO) Selectores de Búsqueda ---
-let clientSearchInput; // Campo de búsqueda en tabla de clientes
-let loanClientSearchInput; // Campo de búsqueda en modal de préstamo
+
+// --- Selectores Dashboard Cobrador ---
+let collectorLoansTableBody;
+
+// --- Selectores de Búsqueda (NUEVOS) ---
+let clientSearchInput; 
+let loanClientSearchInput; 
 
 // --- Selectores Módulo Confirmación ---
 let confirmationModal, confirmText, confirmButton, cancelConfirmButton;
@@ -76,6 +80,35 @@ let confirmCallback = null;
 // --- Estado de la Aplicación ---
 let currentUser = null;
 let userRole = null;
+
+// ===================================================
+// INICIO DE FUNCIONES GLOBALES (Borrar Abono)
+// ===================================================
+
+// (Esta función debe estar aquí para que el botón pueda llamarla)
+function handleDeletePayment(paymentId, loanId) {
+    openConfirmationModal(`¿Estás seguro de que quieres borrar este abono? El sistema recalculará el saldo del préstamo.`, async () => {
+        showLoading(true);
+
+        // Llama al RPC (la función SQL que creamos en el Paso 3)
+        const { error } = await supabase.rpc('delete_payment_and_recalculate', {
+            p_payment_id: paymentId,
+            p_loan_id: loanId
+        });
+
+        showLoading(false);
+
+        if (error) {
+            showNotification('Error al borrar el abono: ' + error.message, true);
+            console.error('Error RPC delete_payment:', error);
+        } else {
+            showNotification('Abono borrado. El préstamo ha sido recalculado.', false);
+            handleViewLoan(loanId);
+            loadLoans();
+            loadAdminDashboard();
+        }
+    });
+}
 
 // --- Funciones de Utilidad ---
 function showNotification(message, isError = false) {
@@ -818,6 +851,11 @@ async function handleDeleteLoan(loanId, clientName) {
 // ===================================================
 
 // Cargar el Dashboard de Inicio (KPIs)
+// ===================================================
+// MÓDULO 1.4: REPORTES Y ESTADÍSTICAS (ADMIN)
+// ===================================================
+
+// Cargar el Dashboard de Inicio (KPIs)
 async function loadAdminDashboard() {
     if (userRole !== 'admin') return;
     
@@ -831,6 +869,11 @@ async function loadAdminDashboard() {
     if (error) {
         showNotification('Error al cargar KPIs: ' + error.message, true);
         console.error('Error RPC get_admin_kpis:', error);
+        // Mostrar 0 en caso de error para no dejar la pantalla en blanco
+        kpiTotalLoaned.textContent = formatCurrency(0);
+        kpiTotalCollected.textContent = formatCurrency(0);
+        kpiInterestEarned.textContent = formatCurrency(0);
+        kpiActiveLoans.textContent = 0;
         return;
     }
 
@@ -1554,6 +1597,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
 
 
