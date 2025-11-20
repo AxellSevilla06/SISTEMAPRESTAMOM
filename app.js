@@ -514,22 +514,36 @@ async function loadClientsForDropdown(searchTerm = '') { // (NUEVO) Acepta un t�
 }
 
 // Cargar Préstamos (para la tabla principal)
+// Cargar Préstamos (para la tabla principal)
 async function loadLoans() {
     if (userRole !== 'admin' || !loansTableBody) return;
     showLoading(true);
     
-    const { data, error } = await supabase
+    // (NUEVO) Lógica de búsqueda principal
+    const searchTerm = clientSearchInput ? clientSearchInput.value.trim() : '';
+    
+    let query = supabase
         .from('loans')
         .select(`
             id,
             client_id,
             amount,
             total_to_pay,
+            total_interest,  // << NECESARIO PARA AMORTIZACIÓN Y REPORTE
             total_payments,
             term_type,
             status,
-            clients ( first_name, last_name )
-        `)
+            clients ( first_name, last_name, phone, personal_id_number ) // Añadido campos para búsqueda
+        `);
+
+    // (NUEVO) Aplicar filtro de búsqueda al JOIN
+    if (searchTerm) {
+        query = query.or(
+            `clients.first_name.ilike.%${searchTerm}%,clients.last_name.ilike.%${searchTerm}%,clients.phone.ilike.%${searchTerm}%,clients.personal_id_number.ilike.%${searchTerm}%`
+        );
+    }
+
+    const { data, error } = await query
         .order('created_at', { ascending: false });
 
     showLoading(false);
@@ -663,13 +677,13 @@ function calculateLoanTotals() {
 }
 
 // Guardar (Crear) Préstamo
+// Guardar (Crear) Préstamo
 async function handleLoanSubmit(e) {
     e.preventDefault();
     const formData = new FormData(loanForm);
     const loanId = loanIdInput.value;
 
     if (loanId) {
-        // Lógica de actualización (a implementar)
         showNotification('La edición de préstamos aún no está implementada.', true);
         return;
     }
@@ -679,35 +693,25 @@ async function handleLoanSubmit(e) {
     const interestRate = parseFloat(formData.get('interest_rate')) || 0;
     const totalPayments = parseInt(formData.get('total_payments')) || 0;
     
-    // Interés simple total
-    const totalInterest = amount * (interestRate / 100) * totalPayments;
-    const totalToPay = amount + totalInterest;
-    const paymentAmount = (totalToPay / totalPayments).toFixed(2); // Redondear a 2 decimales
-
     // Datos para la función RPC
     const loanData = {
         p_client_id: formData.get('client_id'),
         p_amount: amount,
-        p_interest_rate: interestRate,
+        p_interest_rate: interestRate / 100, // IMPORTANTE: Convertir a decimal
         p_total_payments: totalPayments,
         p_term_type: formData.get('term_type'),
         p_issue_date: formData.get('issue_date'),
         p_first_payment_date: formData.get('first_payment_date'),
         p_collection_method: formData.get('collection_method'),
         
-        // Obtener la ruta del cliente seleccionado
-        p_route_id: null, // Lo buscaremos
-        p_cobrador_id: null, // Lo buscaremos
-        
-        // Totales calculados
-        p_payment_amount: paymentAmount,
-        p_total_interest: totalInterest,
-        p_total_to_pay: totalToPay
+        // Obtener la ruta y cobrador
+        p_route_id: null, 
+        p_cobrador_id: null, 
     };
     
     // Validar datos básicos
     if (!loanData.p_client_id || !loanData.p_amount > 0 || !loanData.p_interest_rate > 0 || !loanData.p_total_payments > 0) {
-        showNotification('Formulario incompleto. Revisa Cliente, Monto, Interés y Cuotas.', true);
+        showNotification('Formulario incompleto. Revise los campos.', true);
         return;
     }
     
@@ -725,14 +729,13 @@ async function handleLoanSubmit(e) {
         
         loanData.p_route_id = clientData.route_id;
 
-        // Si tiene ruta, buscar el cobrador de esa ruta
         if(clientData.route_id) {
-            const { data: cobradorData, error: cobradorError } = await supabase
+            const { data: cobradorData } = await supabase
                 .from('profiles')
                 .select('id')
                 .eq('route_id', clientData.route_id)
                 .eq('role', 'cobrador')
-                .limit(1) // Asignar al primer cobrador de la ruta
+                .limit(1) 
                 .single();
             
             if (cobradorData) {
@@ -741,9 +744,35 @@ async function handleLoanSubmit(e) {
         }
 
     } catch (error) {
-        // No bloquear si no encuentra cobrador, solo loggear
         console.warn('No se pudo asignar cobrador automáticamente:', error.message);
     }
+
+
+    // Llama al NUEVO RPC de amortización (Este RPC aún no existe en su DB!)
+    const { data, error } = await supabase.rpc('create_amortization_schedule', {
+        p_client_id: loanData.p_client_id,
+        p_amount: amount,
+        p_interest_rate: loanData.p_interest_rate,
+        p_total_payments: totalPayments,
+        p_term_type: loanData.p_term_type,
+        p_issue_date: loanData.p_issue_date,
+        p_first_payment_date: loanData.p_first_payment_date,
+        p_collection_method: loanData.p_collection_method,
+        p_route_id: loanData.p_route_id,
+        p_cobrador_id: loanData.p_cobrador_id
+    });
+
+    showLoading(false);
+
+    if (error) {
+        showNotification('Vaya, parece que hubo un error al crear el préstamo: ' + error.message, true);
+        console.error('Error RPC create_amortization_schedule:', error);
+    } else {
+        showNotification('Préstamo y calendario de pagos creados con éxito.', false);
+        closeLoanModal();
+        loadLoans(); // Recargar la tabla de préstamos
+    }
+}
 
 
     // Llamar a la función RPC de Supabase
@@ -938,19 +967,25 @@ function renderLoanDetails(loan, schedule, payments) {
 }
 
 // Renderizar tabla de calendario de cuotas
+// Renderizar tabla de calendario de cuotas (AHORA CON AMORTIZACIÓN)
 function renderScheduleTable(schedule) {
     paymentScheduleBody.innerHTML = '';
-    if (schedule.length === 0) {
-        paymentScheduleBody.innerHTML = `<tr><td colspan="4" class="text-center text-gray-500 py-4">No se generó calendario.</td></tr>`;
+    // NOTA: Colspan 7 para la nueva tabla (Cuota, Fecha, Total, Interés, Capital, Saldo, Estado)
+    if (schedule.length === 0) { 
+        paymentScheduleBody.innerHTML = `<tr><td colspan="7" class="text-center text-gray-500 py-4">No se generó calendario.</td></tr>`;
         return;
     }
     schedule.forEach(item => {
         const tr = document.createElement('tr');
-        // Usar item.amount_paid y item.amount_due para mostrar el estado
-        const amountDue = item.amount_due || 0;
+        // Nuevas variables de amortización
+        const capitalDue = item.capital_due || 0; 
+        const interestDue = item.interest_due || 0;
+        const totalDue = (item.amount_due || 0); // Total de la cuota
+        const currentPrincipal = item.current_principal || 0; // Saldo pendiente
         const amountPaid = item.amount_paid || 0;
-        let status = item.status; // 'pendiente', 'pagado', 'parcial'
-        let statusClass = 'bg-gray-100 text-gray-700'; // pendiente
+        
+        let status = item.status; 
+        let statusClass = 'bg-gray-100 text-gray-700'; 
         
         if (status === 'pagado') {
             statusClass = 'bg-green-100 text-green-800';
@@ -959,9 +994,12 @@ function renderScheduleTable(schedule) {
         }
         
         tr.innerHTML = `
-            <td class="px-4 py-3 text-sm text-gray-700">${item.payment_number}</td>
+            <td class="px-4 py-3 text-sm text-center text-gray-700">${item.payment_number}</td>
             <td class="px-4 py-3 text-sm text-gray-700">${formatDate(item.due_date).split(',')[0]}</td>
-            <td class="px-4 py-3 text-sm text-gray-700">${formatCurrency(amountDue)}</td>
+            <td class="px-4 py-3 text-sm text-gray-700 font-bold">${formatCurrency(totalDue)}</td>
+            <td class="px-4 py-3 text-sm text-gray-700">${formatCurrency(interestDue)}</td>
+            <td class="px-4 py-3 text-sm text-gray-700">${formatCurrency(capitalDue)}</td>
+            <td class="px-4 py-3 text-sm text-gray-700">${formatCurrency(currentPrincipal)}</td>
             <td class="px-4 py-3 text-sm">
                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
                     ${status} ${status === 'parcial' ? `(${formatCurrency(amountPaid)})` : ''}
@@ -1516,6 +1554,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
 
 
