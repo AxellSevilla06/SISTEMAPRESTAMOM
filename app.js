@@ -77,6 +77,31 @@ let confirmCallback = null;
 let currentUser = null;
 let userRole = null;
 
+// (Debe estar cerca del inicio de tu app.js, después de let userRole = null;)
+function handleDeletePayment(paymentId, loanId) {
+    openConfirmationModal(`¿Estás seguro de que quieres borrar este abono? El sistema recalculará el saldo del préstamo.`, async () => {
+        showLoading(true);
+
+        // Llama al RPC (la función SQL que creamos en el Paso 3)
+        const { error } = await supabase.rpc('delete_payment_and_recalculate', {
+            p_payment_id: paymentId,
+            p_loan_id: loanId
+        });
+
+        showLoading(false);
+
+        if (error) {
+            showNotification('Error al borrar el abono: ' + error.message, true);
+            console.error('Error RPC delete_payment:', error);
+        } else {
+            showNotification('Abono borrado. El préstamo ha sido recalculado.', false);
+            handleViewLoan(loanId);
+            loadLoans();
+            loadAdminDashboard();
+        }
+    });
+}
+
 // --- Funciones de Utilidad ---
 function showNotification(message, isError = false) {
     if (!notificationBox) return;
@@ -793,6 +818,7 @@ async function handleLoanSubmit(e) {
 
 // (NUEVO) Borrar Préstamo
 async function handleDeleteLoan(loanId, clientName) {
+    // La función interna de openConfirmationModal debe ser async para usar await
     openConfirmationModal(`¿Seguro que quieres borrar el préstamo de "${clientName}"? Se borrarán también todas sus cuotas y abonos registrados. Esta acción no se puede deshacer.`, async () => {
         showLoading(true);
         
@@ -1098,31 +1124,7 @@ async function handlePaymentSubmit(e) {
         loadAdminDashboard();
     }
 }
-// (NUEVO) Borrar un abono y recalcular todo el préstamo
- async function handleDeletePayment(paymentId, loanId) {
-    openConfirmationModal(`¿Estás seguro de que quieres borrar este abono? El sistema recalculará el saldo del préstamo.`, async () => {
-        showLoading(true);
 
-        // Llama al RPC (la función SQL que creamos en el Paso 3)
-        const { error } = await supabase.rpc('delete_payment_and_recalculate', {
-            p_payment_id: paymentId,
-            p_loan_id: loanId
-        });
-
-        showLoading(false);
-
-        if (error) {
-            showNotification('Error al borrar el abono: ' + error.message, true);
-            console.error('Error RPC delete_payment:', error);
-        } else {
-            showNotification('Abono borrado. El préstamo ha sido recalculado.', false);
-            // Recargar la vista para reflejar el cambio
-            handleViewLoan(loanId);
-            loadLoans();
-            loadAdminDashboard();
-        }
-    });
-}
 // ===================================================
 // MÓDULO 2.1: GESTIÓN DE USUARIOS Y RUTAS
 // ===================================================
@@ -1554,4 +1556,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
