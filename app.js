@@ -710,7 +710,6 @@ function calculateLoanTotals() {
 }
 
 // Guardar (Crear) Préstamo
-// Guardar (Crear) Préstamo
 async function handleLoanSubmit(e) {
     e.preventDefault();
     const formData = new FormData(loanForm);
@@ -727,6 +726,7 @@ async function handleLoanSubmit(e) {
     const totalPayments = parseInt(formData.get('total_payments')) || 0;
     
     // Datos para la función RPC
+    // (NUEVO: Definimos loanData aquí para evitar el ReferenceError)
     const loanData = {
         p_client_id: formData.get('client_id'),
         p_amount: amount,
@@ -737,7 +737,7 @@ async function handleLoanSubmit(e) {
         p_first_payment_date: formData.get('first_payment_date'),
         p_collection_method: formData.get('collection_method'),
         
-        // Obtener la ruta y cobrador
+        // Lo buscaremos a continuación
         p_route_id: null, 
         p_cobrador_id: null, 
     };
@@ -781,7 +781,7 @@ async function handleLoanSubmit(e) {
     }
 
 
-    // Llama al NUEVO RPC de amortización (Este RPC aún no existe en su DB!)
+    // Llama al NUEVO RPC de amortización
     const { data, error } = await supabase.rpc('create_amortization_schedule', {
         p_client_id: loanData.p_client_id,
         p_amount: amount,
@@ -798,7 +798,7 @@ async function handleLoanSubmit(e) {
     showLoading(false);
 
     if (error) {
-        showNotification('Vaya, parece que hubo un error al crear el préstamo: ' + error.message, true);
+        showNotification('Vaya, parece que hubo un error: ' + error.message, true);
         console.error('Error RPC create_amortization_schedule:', error);
     } else {
         showNotification('Préstamo y calendario de pagos creados con éxito.', false);
@@ -1597,6 +1597,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
 
 
 
